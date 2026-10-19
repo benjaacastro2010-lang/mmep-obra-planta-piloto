@@ -36,9 +36,34 @@ export default {
       if (req.method === "GET" && path === "/api/estado") {
         const t = await env.DB.prepare("SELECT id, hecha, hecha_en, por FROM tareas").all();
         const f = await env.DB.prepare("SELECT id, tarea, tipo, at, por FROM fotos ORDER BY at").all();
+        const p = await env.DB.prepare("SELECT id, texto, at, por, entregado, entregado_en FROM pedidos ORDER BY at DESC LIMIT 300").all();
         const tareas = {};
         for (const r of t.results) tareas[r.id] = { hecha: !!r.hecha, hechaEn: r.hecha_en, por: r.por };
-        return json({ tareas, fotos: f.results });
+        const pedidos = p.results.map(r => ({ id: r.id, texto: r.texto, at: r.at, por: r.por, entregado: !!r.entregado, entregadoEn: r.entregado_en }));
+        return json({ tareas, fotos: f.results, pedidos });
+      }
+
+      if (req.method === "POST" && path === "/api/pedido") {
+        const body = await req.json().catch(() => ({}));
+        const texto = (body.texto || "").toString().replace(/\u0000/g, "").trim().slice(0, 2000);
+        if (!texto) return err("El pedido está vacío", 400);
+        const pedido = { id: crypto.randomUUID().replace(/-/g, ""), texto, at: new Date().toISOString(), por: limpiarNombre(req.headers.get("X-Por")), entregado: false, entregadoEn: null };
+        await env.DB.prepare("INSERT INTO pedidos (id, texto, at, por, entregado) VALUES (?1, ?2, ?3, ?4, 0)")
+          .bind(pedido.id, pedido.texto, pedido.at, pedido.por).run();
+        return json(pedido);
+      }
+
+      let mp = path.match(/^\/api\/pedido\/([0-9a-f]{32})$/);
+      if (mp && req.method === "POST") {
+        const body = await req.json().catch(() => ({}));
+        const entregado = !!body.entregado;
+        await env.DB.prepare("UPDATE pedidos SET entregado = ?2, entregado_en = ?3 WHERE id = ?1")
+          .bind(mp[1], entregado ? 1 : 0, entregado ? new Date().toISOString() : null).run();
+        return json({ ok: true });
+      }
+      if (mp && req.method === "DELETE") {
+        await env.DB.prepare("DELETE FROM pedidos WHERE id = ?1").bind(mp[1]).run();
+        return json({ ok: true });
       }
 
       let m = path.match(/^\/api\/tarea\/(t\d{1,2})$/);

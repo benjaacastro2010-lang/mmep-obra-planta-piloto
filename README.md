@@ -6,6 +6,7 @@ Seguimiento de la obra "Remodelación integral y refuncionalización – Bloque 
 - El obrero sube fotos de **antes** y **después** de cada lugar intervenido.
 - Cada tarea tiene una barra de avance que se llena con las fotos y llega al 100 % al marcarla completada (en verde).
 - El avance general suma todas las tareas y lo compara con lo previsto para el día.
+- Apartado **Pedido de materiales**: el obrero escribe lo que necesita y queda guardado; se marca como entregado.
 
 Para entrar hace falta el código de la obra.
 

@@ -14,3 +14,11 @@ CREATE TABLE IF NOT EXISTS fotos (
   datos BLOB NOT NULL
 );
 CREATE INDEX IF NOT EXISTS fotos_at ON fotos (at);
+CREATE TABLE IF NOT EXISTS pedidos (
+  id TEXT PRIMARY KEY,
+  texto TEXT NOT NULL,
+  at TEXT NOT NULL,
+  por TEXT,
+  entregado INTEGER NOT NULL DEFAULT 0,
+  entregado_en TEXT
+);
