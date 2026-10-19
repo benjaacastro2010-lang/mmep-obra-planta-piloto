@@ -1,0 +1,9 @@
+{
+  "name": "mmep-obras",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "workers_dev": true,
+  "d1_databases": [
+    { "binding": "DB", "database_name": "mmep-obras", "database_id": "82716cce-e56a-410e-8c7d-7e823075c9f2" }
+  ]
+}

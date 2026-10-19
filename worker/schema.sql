@@ -1,0 +1,16 @@
+CREATE TABLE IF NOT EXISTS tareas (
+  id TEXT PRIMARY KEY,
+  hecha INTEGER NOT NULL DEFAULT 0,
+  hecha_en TEXT,
+  por TEXT
+);
+CREATE TABLE IF NOT EXISTS fotos (
+  id TEXT PRIMARY KEY,
+  tarea TEXT NOT NULL,
+  tipo TEXT NOT NULL,
+  at TEXT NOT NULL,
+  por TEXT,
+  mime TEXT NOT NULL,
+  datos BLOB NOT NULL
+);
+CREATE INDEX IF NOT EXISTS fotos_at ON fotos (at);
