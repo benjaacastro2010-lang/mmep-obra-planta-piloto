@@ -1,0 +1,6 @@
+.git
+.gitignore
+.assetsignore
+worker
+/README.md
+/index.html

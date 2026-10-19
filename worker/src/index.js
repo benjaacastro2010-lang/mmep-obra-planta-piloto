@@ -27,7 +27,8 @@ export default {
   async fetch(req, env) {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     const url = new URL(req.url);
-    const path = url.pathname.replace(/\/+$/, "");
+    const path = url.pathname.replace(/^\/obra(?=\/)/, "").replace(/\/+$/, "");
+    if (path === "/obra") return Response.redirect(url.origin + "/obra/", 301);
     const clave = req.headers.get("X-Clave") || url.searchParams.get("k") || "";
     if (!env.CLAVE || !iguales(clave, env.CLAVE)) return err("Clave incorrecta", 401);
 
