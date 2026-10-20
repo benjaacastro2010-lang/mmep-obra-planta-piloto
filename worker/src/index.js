@@ -32,8 +32,12 @@ export default {
       return Response.redirect(url.origin + "/plan-de-obra/", 301);
     const path = url.pathname.replace(/^\/(plan-de-obra|obra)(?=\/)/, "").replace(/\/+$/, "");
     if (path === "/plan-de-obra") return Response.redirect(url.origin + "/plan-de-obra/", 301);
+    // Dos cuentas: CLAVE_JEFE (jefe: ve los avisos de materiales, marca entregas y borra) y CLAVE (obreros)
     const clave = req.headers.get("X-Clave") || url.searchParams.get("k") || "";
-    if (!env.CLAVE || !iguales(clave, env.CLAVE)) return err("Clave incorrecta", 401);
+    const rol = env.CLAVE_JEFE && iguales(clave, env.CLAVE_JEFE) ? "jefe"
+      : env.CLAVE && iguales(clave, env.CLAVE) ? "obrero" : null;
+    if (!rol) return err("Clave incorrecta", 401);
+    const soloJefe = () => err("Solo el jefe puede hacer esto", 403);
 
     try {
       if (req.method === "GET" && path === "/api/estado") {
@@ -59,6 +63,7 @@ export default {
 
       let mp = path.match(/^\/api\/pedido\/([0-9a-f]{32})$/);
       if (mp && req.method === "POST") {
+        if (rol !== "jefe") return soloJefe();
         const body = await req.json().catch(() => ({}));
         const entregado = !!body.entregado;
         await env.DB.prepare("UPDATE pedidos SET entregado = ?2, entregado_en = ?3 WHERE id = ?1")
@@ -66,6 +71,7 @@ export default {
         return json({ ok: true });
       }
       if (mp && req.method === "DELETE") {
+        if (rol !== "jefe") return soloJefe();
         await env.DB.prepare("DELETE FROM pedidos WHERE id = ?1").bind(mp[1]).run();
         return json({ ok: true });
       }
@@ -106,11 +112,12 @@ export default {
         });
       }
       if (m && req.method === "DELETE") {
+        if (rol !== "jefe") return soloJefe();
         await env.DB.prepare("DELETE FROM fotos WHERE id = ?1").bind(m[1]).run();
         return json({ ok: true });
       }
 
-      if (req.method === "GET" && path === "/api/login") return json({ ok: true });
+      if (req.method === "GET" && path === "/api/login") return json({ ok: true, rol });
       return err("No encontrado", 404);
     } catch (e) {
       return err("Error del servidor", 500);

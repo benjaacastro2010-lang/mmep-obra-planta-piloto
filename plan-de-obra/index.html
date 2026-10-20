@@ -517,7 +517,7 @@ function render(){
     const b=document.createElement("button");
     b.className="row"+(st==="done"?" is-done":"");
     b.innerHTML=`<span class="n">${t.n}</span><span class="name"></span>
-      <span class="right">${faltan(t.id)?`<span class="need" title="Pidió materiales que todavía no se entregaron"><span class="ydot"></span>${faltan(t.id)===1?"Materiales":faltan(t.id)+" pedidos"}</span>`:""}<span class="cam" ${nf?"":"hidden"}>${camIcon}<span class="mono">${nf}</span></span><span class="pill ${st}">${LABEL[st]}</span></span>
+      <span class="right">${esJefe()&&faltan(t.id)?`<span class="need" title="Pidió materiales que todavía no se entregaron"><span class="ydot"></span>${faltan(t.id)===1?"Materiales":faltan(t.id)+" pedidos"}</span>`:""}<span class="cam" ${nf?"":"hidden"}>${camIcon}<span class="mono">${nf}</span></span><span class="pill ${st}">${LABEL[st]}</span></span>
       <span class="sub"><span class="mono">${t.ini} → ${t.fin}</span><span class="mini" title="Avance ${av} % · previsto hoy ${es} %"><i style="width:${av}%"></i>${es>0&&es<100&&st!=="done"?`<b style="left:${es}%"></b>`:""}</span><span class="mono pc">${av}%</span></span>`;
     b.querySelector(".name").textContent=t.nombre;
     b.addEventListener("click",()=>abrir(t.id));
@@ -671,7 +671,7 @@ function pintarLb(){
   $("lbImg").src=fotoUrl(f);
   $("lbText").textContent=`${f.tipo==="antes"?"Antes":"Después"} · ${lbI+1} de ${lbSet.length} · ${[fmt(f.at),nombreDe(f.por)].filter(Boolean).join(" · ")}`;
   $("lbPrev").disabled=lbI===0; $("lbNext").disabled=lbI===lbSet.length-1;
-  $("lbDel").hidden=!state.online; $("lbDel").textContent=lbConfirm?"¿Borrar? Tocá de nuevo":"Borrar foto";
+  $("lbDel").hidden=!state.online||!esJefe(); $("lbDel").textContent=lbConfirm?"¿Borrar? Tocá de nuevo":"Borrar foto";
 }
 $("lbClose").onclick=()=>{ $("lb").hidden=true; };
 $("lbPrev").onclick=()=>{ if(lbI>0){lbI--;lbConfirm=false;pintarLb();} };
@@ -732,7 +732,7 @@ function pedidoItem(p,conTarea,onErr){
   pill.textContent=p.entregado?"Entregado"+(p.entregadoEn?" "+fmt(p.entregadoEn):""):"Pendiente";
   const info=document.createElement("span"); info.textContent=[fmt(p.at),nombreDe(p.por)].filter(Boolean).join(" · ");
   meta.append(pill,info);
-  if(state.online){
+  if(state.online&&esJefe()){
     const ok=document.createElement("button"); ok.type="button"; ok.textContent=p.entregado?"Volver a pendiente":"Marcar entregado";
     ok.onclick=()=>marcarPedido(p,!p.entregado,onErr);
     const del=document.createElement("button"); del.type="button"; del.className="del";
@@ -747,9 +747,10 @@ function renderPedidos(){
   render();
   const pend=state.pedidos.filter(p=>!p.entregado).length;
   const tareasConFalta=TAREAS.filter(t=>faltan(t.id));
-  const bd=$("pedBadge"); bd.hidden=!pend; bd.innerHTML="";
+  /* Los avisos amarillos los ve solo el jefe */
+  const bd=$("pedBadge"); bd.hidden=!pend||!esJefe(); bd.innerHTML="";
   if(pend){ const d=document.createElement("span"); d.className="ydot"; bd.append(d," "+(pend===1?"1 pendiente":`${pend} pendientes`)); }
-  $("pedResumen").textContent = tareasConFalta.length
+  $("pedResumen").textContent = esJefe()&&tareasConFalta.length
     ? `Necesitan materiales: ${tareasConFalta.map(t=>"tarea "+t.n).join(", ")}. Las marcamos con un punto amarillo en la lista.`
     : "Para pedir materiales, entrá a la tarea y tocá la pestaña “Pedido de materiales”.";
   if(state.abierta) renderPedidosTarea();
@@ -763,7 +764,7 @@ function renderPedidos(){
 function renderPedidosTarea(){
   const id=state.abierta, ps=state.pedidos.filter(p=>p.tarea===id), pend=ps.filter(p=>!p.entregado).length;
   $("tPedCount").textContent=ps.length?`${pend} pendiente${pend===1?"":"s"}`:"";
-  const n=$("tabPedN"); n.hidden=!pend; n.textContent=pend;
+  const n=$("tabPedN"); n.hidden=!pend||!esJefe(); n.textContent=pend;
   $("tPedSend").disabled=!state.online;
   const ul=$("tPedList"); ul.innerHTML="";
   ordenPedidos(ps).forEach(p=>ul.appendChild(pedidoItem(p,false,tPedErr)));
@@ -836,8 +837,10 @@ $("loginForm").addEventListener("submit",async e=>{
   $("lgBtn").disabled=true; $("lgBtn").textContent="Entrando…";
   state.clave=clave; state.nombre=nombre;
   try{
-    await api("/api/login");
-    guardar("mmep_clave",clave); guardar("mmep_nombre",nombre);
+    const r=await api("/api/login");
+    state.rol=r.rol==="jefe"?"jefe":"obrero";
+    if(state.rol==="jefe") state.nombre="MMEP";
+    guardar("mmep_clave",clave); guardar("mmep_nombre",state.nombre); guardar("mmep_rol",state.rol);
     entrar();
   }catch(err){
     state.clave="";
@@ -847,13 +850,17 @@ $("loginForm").addEventListener("submit",async e=>{
 });
 function entrar(){
   $("login").hidden=true; $("lgClave").value="";
-  $("who").hidden=false; $("whoName").textContent="Conectado como "+state.nombre+" ·";
+  $("who").hidden=false;
+  $("whoName").textContent="Conectado como "+state.nombre+(esJefe()?" (jefe)":"")+" ·";
   cargar();
+  /* Confirma el rol con el servidor por si cambió el código */
+  api("/api/login").then(r=>{ const rol=r.rol==="jefe"?"jefe":"obrero"; if(rol!==state.rol){ state.rol=rol; guardar("mmep_rol",rol); entrar(); } }).catch(()=>{});
 }
+function esJefe(){ return state.rol==="jefe"; }
 function banner(msg){ const b=$("banner"); b.textContent=msg; b.hidden=false; }
 
 renderStages(); render();
-state.clave=leer("mmep_clave"); state.nombre=leer("mmep_nombre");
+state.clave=leer("mmep_clave"); state.nombre=leer("mmep_nombre"); state.rol=leer("mmep_rol")||"obrero";
 if(state.clave&&state.nombre) entrar(); else mostrarLogin();
 </script>
 </body>
