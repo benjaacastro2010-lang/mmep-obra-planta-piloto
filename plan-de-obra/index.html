@@ -160,6 +160,12 @@ html{-webkit-text-size-adjust:100%}
 body{margin:0;min-height:100vh;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 img{max-width:100%}
 
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:10px;position:sticky;top:-16px;z-index:2}
+.tab{font:inherit;font-size:14px;font-weight:600;padding:11px 8px;border-radius:7px;border:0;background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-align:center}
+.tab[aria-selected="true"]{background:var(--brand2);color:#fff}
+.tab:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.tabn{font-size:11px;font-weight:700;min-width:20px;padding:2px 6px;border-radius:999px;background:var(--warn);color:#18181b}
+.pane{display:flex;flex-direction:column;gap:18px}
 .vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
 /* Pedido de materiales */
 .pedbtn{font:inherit;color:var(--ink);display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:16px;border-radius:10px;border:1px solid var(--brand2);background:linear-gradient(120deg,rgba(107,92,242,.22),rgba(79,211,230,.08));cursor:pointer}
@@ -277,6 +283,11 @@ img{max-width:100%}
       <button class="x" id="pClose" aria-label="Cerrar">×</button>
     </div>
     <div class="facts" id="pFacts"></div>
+    <div class="tabs" role="tablist" aria-label="Secciones de la tarea">
+      <button class="tab" role="tab" id="tabFotos" aria-selected="true" aria-controls="paneFotos" type="button">Fotos y avance</button>
+      <button class="tab" role="tab" id="tabPed" aria-selected="false" aria-controls="panePed" type="button">Pedido de materiales <span class="tabn" id="tabPedN" hidden></span></button>
+    </div>
+    <div class="pane" id="paneFotos" role="tabpanel" aria-labelledby="tabFotos">
     <div class="avbox" id="pAv">
       <div class="avtop"><span class="eyebrow">Avance de la tarea</span><strong class="mono" id="pAvPct">0%</strong></div>
       <div class="mini"><i id="pAvBar"></i><b id="pAvExp" hidden></b></div>
@@ -294,10 +305,13 @@ img{max-width:100%}
       <h3>Después <span id="cDespues"></span></h3>
       <div class="grid" id="gDespues"></div>
     </section>
+    <div class="hint" id="pHint"></div>
+    </div>
     <input class="vh" type="file" id="file-antes" accept="image/*" multiple tabindex="-1" aria-hidden="true">
     <input class="vh" type="file" id="file-despues" accept="image/*" multiple tabindex="-1" aria-hidden="true">
+    <div class="pane" id="panePed" role="tabpanel" aria-labelledby="tabPed" hidden>
     <section class="ph" id="tPedSec">
-      <h3>Materiales para esta tarea <span id="tPedCount"></span></h3>
+      <h3>Pedidos de esta tarea <span id="tPedCount"></span></h3>
       <form class="pedform" id="tPedForm">
         <label for="tPedTexto">¿Qué materiales hacen falta para esta tarea?</label>
         <textarea id="tPedTexto" rows="3" maxlength="2000" placeholder="Ej: 4 bolsas de cal, 1 balde de membrana líquida"></textarea>
@@ -306,7 +320,7 @@ img{max-width:100%}
       </form>
       <ul class="pedlist" id="tPedList"></ul>
     </section>
-    <div class="hint" id="pHint"></div>
+    </div>
   </div>
 </div>
 
@@ -511,9 +525,16 @@ function render(){
 /* ---------- Ficha ---------- */
 function abrir(id){
   state.abierta=id; $("sheet").hidden=false; document.body.style.overflow="hidden";
-  $("tPedTexto").value=leer("mmep_borrador_"+id); tPedErr(""); pedConfirm=null;
+  $("tPedTexto").value=leer("mmep_borrador_"+id); tPedErr(""); pedConfirm=null; verPestana("fotos");
   renderPanel(); renderPedidosTarea(); $("sheet").querySelector(".panel").scrollTop=0; $("pClose").focus();
 }
+function verPestana(cual){
+  const ped=cual==="pedidos";
+  $("tabFotos").setAttribute("aria-selected",String(!ped)); $("tabPed").setAttribute("aria-selected",String(ped));
+  $("paneFotos").hidden=ped; $("panePed").hidden=!ped;
+}
+$("tabFotos").onclick=()=>verPestana("fotos");
+$("tabPed").onclick=()=>verPestana("pedidos");
 function cerrar(){ state.abierta=null; $("sheet").hidden=true; document.body.style.overflow=""; }
 $("pClose").onclick=cerrar;
 $("sheet").addEventListener("click",e=>{ if(e.target===$("sheet")) cerrar(); });
@@ -732,6 +753,7 @@ function renderPedidos(){
 function renderPedidosTarea(){
   const id=state.abierta, ps=state.pedidos.filter(p=>p.tarea===id), pend=ps.filter(p=>!p.entregado).length;
   $("tPedCount").textContent=ps.length?`${pend} pendiente${pend===1?"":"s"}`:"";
+  const n=$("tabPedN"); n.hidden=!pend; n.textContent=pend;
   $("tPedSend").disabled=!state.online;
   const ul=$("tPedList"); ul.innerHTML="";
   ordenPedidos(ps).forEach(p=>ul.appendChild(pedidoItem(p,false,tPedErr)));
