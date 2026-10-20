@@ -4,7 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#18181b">
-<title>MMEP Obra Planta Piloto</title>
+<title>MMEP Plan de Obra</title>
+<meta name="description" content="MMEP Constructora · Plan de obra Planta Piloto: avance, fotos y pedido de materiales.">
+<meta property="og:title" content="MMEP Plan de Obra">
+<meta property="og:site_name" content="MMEP Constructora">
+<meta property="og:description" content="Avance de obra, fotos de antes y después y pedido de materiales.">
+<meta name="application-name" content="MMEP Plan de Obra">
+<meta name="apple-mobile-web-app-title" content="MMEP Plan de Obra">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Poppins:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <style>
@@ -154,6 +160,7 @@ html{-webkit-text-size-adjust:100%}
 body{margin:0;min-height:100vh;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 img{max-width:100%}
 
+.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
 /* Pedido de materiales */
 .pedbtn{font:inherit;color:var(--ink);display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:16px;border-radius:10px;border:1px solid var(--brand2);background:linear-gradient(120deg,rgba(107,92,242,.22),rgba(79,211,230,.08));cursor:pointer}
 .pedbtn:hover{border-color:var(--accent)}
@@ -166,7 +173,9 @@ img{max-width:100%}
 .pedform{display:flex;flex-direction:column;gap:10px}
 .pedform label{font-size:14px;font-weight:600}
 .pedform textarea{font:inherit;font-size:16px;line-height:1.45;padding:12px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);resize:vertical;min-height:120px}
-.pedform textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.pedform textarea:focus,.pedform select:focus{outline:2px solid var(--accent);outline-offset:1px}
+.pedform select{font:inherit;font-size:15px;padding:11px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);max-width:100%}
+.ptag{font-size:12px;font-weight:600;color:var(--accent);overflow-wrap:anywhere}
 .pedlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .pedlist li{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
 .pedlist li.ent{opacity:.7}
@@ -285,6 +294,18 @@ img{max-width:100%}
       <h3>Después <span id="cDespues"></span></h3>
       <div class="grid" id="gDespues"></div>
     </section>
+    <input class="vh" type="file" id="file-antes" accept="image/*" multiple tabindex="-1" aria-hidden="true">
+    <input class="vh" type="file" id="file-despues" accept="image/*" multiple tabindex="-1" aria-hidden="true">
+    <section class="ph" id="tPedSec">
+      <h3>Materiales para esta tarea <span id="tPedCount"></span></h3>
+      <form class="pedform" id="tPedForm">
+        <label for="tPedTexto">¿Qué materiales hacen falta para esta tarea?</label>
+        <textarea id="tPedTexto" rows="3" maxlength="2000" placeholder="Ej: 4 bolsas de cal, 1 balde de membrana líquida"></textarea>
+        <div class="err" id="tPedErr" hidden></div>
+        <button class="donebtn on" id="tPedSend" type="submit">Pedir materiales</button>
+      </form>
+      <ul class="pedlist" id="tPedList"></ul>
+    </section>
     <div class="hint" id="pHint"></div>
   </div>
 </div>
@@ -299,6 +320,8 @@ img{max-width:100%}
       <button class="x" id="pedClose" aria-label="Cerrar">×</button>
     </div>
     <form class="pedform" id="pedForm">
+      <label for="pedTarea">¿Para qué tarea?</label>
+      <select id="pedTarea"></select>
       <label for="pedTexto">¿Qué materiales necesitás?</label>
       <textarea id="pedTexto" rows="5" maxlength="2000" placeholder="Ej: 10 bolsas de cemento, 2 rollos de membrana, 50 m de cable 2,5 mm"></textarea>
       <div class="err" id="pedErr" hidden></div>
@@ -380,11 +403,9 @@ TAREAS.forEach(t=>{t.a=dayIdx(t.ini);t.b=dayIdx(t.fin);});
 ETAPAS.forEach(e=>{e.a=dayIdx(e.ini);e.b=dayIdx(e.fin);});
 
 const $ = id => document.getElementById(id);
-/* Servidor donde se guardan tareas y fotos (Cloudflare Worker "mmep-obras") */
-/* En mmepconstructora.com/obra/ el servidor está en el mismo sitio, bajo /obra */
-const API = location.protocol.startsWith("http")&&location.pathname.startsWith("/obra") ? location.origin+"/obra"
-  : location.protocol==="file:"||location.hostname==="localhost"||location.hostname==="127.0.0.1" ? "http://localhost:8787"
-  : "https://mmep-obras.benjaa-castro-2010.workers.dev";
+/* El servidor (Cloudflare Worker "mmep-obras") está en el mismo sitio, bajo /plan-de-obra */
+const API = location.protocol.startsWith("http")&&location.pathname.startsWith("/plan-de-obra") ? location.origin+"/plan-de-obra"
+  : "http://localhost:8787/plan-de-obra";
 const state = { estado:{}, fotos:[], pedidos:[], filtro:"all", abierta:null, online:false, clave:"", nombre:"" };
 const guardar=(k,v)=>{ try{ v==null?localStorage.removeItem(k):localStorage.setItem(k,v); }catch{} };
 const leer=k=>{ try{ return localStorage.getItem(k)||""; }catch{ return ""; } };
@@ -488,7 +509,11 @@ function render(){
 }
 
 /* ---------- Ficha ---------- */
-function abrir(id){ state.abierta=id; $("sheet").hidden=false; document.body.style.overflow="hidden"; renderPanel(); $("pClose").focus(); }
+function abrir(id){
+  state.abierta=id; $("sheet").hidden=false; document.body.style.overflow="hidden";
+  $("tPedTexto").value=leer("mmep_borrador_"+id); tPedErr(""); pedConfirm=null;
+  renderPanel(); renderPedidosTarea(); $("sheet").querySelector(".panel").scrollTop=0; $("pClose").focus();
+}
 function cerrar(){ state.abierta=null; $("sheet").hidden=true; document.body.style.overflow=""; }
 $("pClose").onclick=cerrar;
 $("sheet").addEventListener("click",e=>{ if(e.target===$("sheet")) cerrar(); });
@@ -537,13 +562,14 @@ function renderPanel(){
       b.append(img,cap); b.onclick=()=>verFoto(fs,i); g.appendChild(b);
     });
     if(state.online){
-      const lab=document.createElement("label"); lab.className="add";
+      /* El botón apunta a un selector de archivos fijo (#file-antes / #file-despues) que nunca se redibuja,
+         así la foto elegida no se pierde si la página se actualiza mientras se usa la cámara. */
+      const lab=document.createElement("label"); lab.className="add"; lab.htmlFor="file-"+tipo;
       const busy=state.subiendo&&state.subiendo.tarea===t.id&&state.subiendo.tipo===tipo;
       if(busy) lab.classList.add("busy");
       lab.innerHTML=plusIcon+`<span>${busy?`Subiendo ${state.subiendo.i} de ${state.subiendo.n}…`:`Agregar foto ${tipo==="antes"?"de antes":"de después"}`}</span>`;
-      const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*"; inp.multiple=true; inp.id="up-"+tipo; inp.disabled=!!state.subiendo;
-      inp.onchange=()=>{ const files=[...inp.files]; inp.value=""; if(files.length) subir(t.id,tipo,files); };
-      lab.appendChild(inp); g.appendChild(lab);
+      lab.addEventListener("click",e=>{ if(state.subiendo){ e.preventDefault(); return; } state.eligiendo={tarea:t.id,tipo}; });
+      g.appendChild(lab);
     }
   });
   const h=$("pHint");
@@ -579,6 +605,16 @@ async function comprimir(file){
   }catch{}
   return file;
 }
+
+["antes","despues"].forEach(tipo=>{
+  const inp=$("file-"+tipo);
+  inp.addEventListener("change",()=>{
+    const files=[...inp.files]; inp.value="";
+    const destino=state.eligiendo&&state.eligiendo.tipo===tipo?state.eligiendo.tarea:state.abierta;
+    state.eligiendo=null;
+    if(files.length&&destino) subir(destino,tipo,files);
+  });
+});
 
 async function subir(tarea,tipo,files){
   err(""); state.subiendo={tarea,tipo,i:1,n:files.length}; renderPanel();
@@ -647,7 +683,7 @@ async function cargar(){
     const d=await api("/api/estado");
     state.estado=d.tareas||{};
     state.fotos=(d.fotos||[]).filter(f=>/^[0-9a-f]{32}$/.test(f.id)&&(f.tipo==="antes"||f.tipo==="despues")&&TAREAS.some(t=>t.id===f.tarea));
-    state.pedidos=(d.pedidos||[]).filter(p=>/^[0-9a-f]{32}$/.test(p.id)&&typeof p.texto==="string");
+    state.pedidos=(d.pedidos||[]).filter(p=>/^[0-9a-f]{32}$/.test(p.id)&&typeof p.texto==="string").map(p=>({...p,tarea:TAREAS.some(t=>t.id===p.tarea)?p.tarea:null}));
     state.online=true; $("banner").hidden=true; render(); renderPedidos();
   }catch(e){
     if(e.status===401){ salir("El código de la obra no es correcto."); }
@@ -657,67 +693,99 @@ async function cargar(){
 setInterval(()=>{ if(document.visibilityState==="visible") cargar(); },20000);
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") cargar(); });
 
-/* ---------- Pedido de materiales ---------- */
+/* ---------- Pedido de materiales ----------
+   Cada pedido puede ir atado a una tarea (campo "tarea") o ser general. Se ven todos juntos en el
+   apartado general y, filtrados, dentro de cada tarea. */
 let pedConfirm=null;
+const nombreTarea=id=>{ const t=TAREAS.find(x=>x.id===id); return t?`Tarea ${t.n} · ${t.nombre}`:"General"; };
+function pedidoItem(p,conTarea,onErr){
+  const li=document.createElement("li"); if(p.entregado) li.className="ent";
+  if(conTarea){ const tg=document.createElement("div"); tg.className="ptag"; tg.textContent=nombreTarea(p.tarea); li.appendChild(tg); }
+  const tx=document.createElement("div"); tx.className="ptext"; tx.textContent=p.texto;
+  const meta=document.createElement("div"); meta.className="pmeta";
+  const pill=document.createElement("span"); pill.className="pill "+(p.entregado?"done":"pend");
+  pill.textContent=p.entregado?"Entregado"+(p.entregadoEn?" "+fmt(p.entregadoEn):""):"Pendiente";
+  const info=document.createElement("span"); info.textContent=[fmt(p.at),nombreDe(p.por)].filter(Boolean).join(" · ");
+  meta.append(pill,info);
+  if(state.online){
+    const ok=document.createElement("button"); ok.type="button"; ok.textContent=p.entregado?"Volver a pendiente":"Marcar entregado";
+    ok.onclick=()=>marcarPedido(p,!p.entregado,onErr);
+    const del=document.createElement("button"); del.type="button"; del.className="del";
+    del.textContent=pedConfirm===p.id?"¿Borrar? Tocá de nuevo":"Borrar";
+    del.onclick=()=>borrarPedido(p,onErr);
+    meta.append(ok,del);
+  }
+  li.append(tx,meta); return li;
+}
+const ordenPedidos=ps=>[...ps].sort((a,b)=>(a.entregado-b.entregado)||(b.at>a.at?1:-1));
 function renderPedidos(){
   const pend=state.pedidos.filter(p=>!p.entregado).length;
   const bd=$("pedBadge"); bd.hidden=!pend; bd.textContent=pend===1?"1 pendiente":`${pend} pendientes`;
+  if(state.abierta) renderPedidosTarea();
   if($("pedSheet").hidden) return;
   $("pedCount").textContent=state.pedidos.length?`${pend} pendiente${pend===1?"":"s"} de ${state.pedidos.length}`:"";
   $("pedSend").disabled=!state.online;
   const ul=$("pedList"); ul.innerHTML="";
   if(!state.pedidos.length){ const li=document.createElement("li"); li.className="empty"; li.textContent="Todavía no hay pedidos. El primero que escribas aparece acá."; ul.appendChild(li); return; }
-  const orden=[...state.pedidos].sort((a,b)=>(a.entregado-b.entregado)||(b.at>a.at?1:-1));
-  orden.forEach(p=>{
-    const li=document.createElement("li"); if(p.entregado) li.className="ent";
-    const tx=document.createElement("div"); tx.className="ptext"; tx.textContent=p.texto;
-    const meta=document.createElement("div"); meta.className="pmeta";
-    const pill=document.createElement("span"); pill.className="pill "+(p.entregado?"done":"pend");
-    pill.textContent=p.entregado?"Entregado"+(p.entregadoEn?" "+fmt(p.entregadoEn):""):"Pendiente";
-    const info=document.createElement("span"); info.textContent=[fmt(p.at),nombreDe(p.por)].filter(Boolean).join(" · ");
-    meta.append(pill,info);
-    if(state.online){
-      const ok=document.createElement("button"); ok.type="button"; ok.textContent=p.entregado?"Volver a pendiente":"Marcar entregado";
-      ok.onclick=()=>marcarPedido(p,!p.entregado);
-      const del=document.createElement("button"); del.type="button"; del.className="del";
-      del.textContent=pedConfirm===p.id?"¿Borrar? Tocá de nuevo":"Borrar";
-      del.onclick=()=>borrarPedido(p);
-      meta.append(ok,del);
-    }
-    li.append(tx,meta); ul.appendChild(li);
-  });
+  ordenPedidos(state.pedidos).forEach(p=>ul.appendChild(pedidoItem(p,true,pedErr)));
+}
+function renderPedidosTarea(){
+  const id=state.abierta, ps=state.pedidos.filter(p=>p.tarea===id), pend=ps.filter(p=>!p.entregado).length;
+  $("tPedCount").textContent=ps.length?`${pend} pendiente${pend===1?"":"s"}`:"";
+  $("tPedSend").disabled=!state.online;
+  const ul=$("tPedList"); ul.innerHTML="";
+  ordenPedidos(ps).forEach(p=>ul.appendChild(pedidoItem(p,false,tPedErr)));
 }
 function pedErr(m){ const e=$("pedErr"); e.textContent=m||""; e.hidden=!m; }
+function tPedErr(m){ const e=$("tPedErr"); e.textContent=m||""; e.hidden=!m; }
+function llenarSelectTareas(){
+  const s=$("pedTarea"); s.innerHTML="";
+  const o=document.createElement("option"); o.value=""; o.textContent="General (para toda la obra)"; s.appendChild(o);
+  TAREAS.forEach(t=>{ const op=document.createElement("option"); op.value=t.id; op.textContent=`${t.n}. ${t.nombre}`; s.appendChild(op); });
+}
+llenarSelectTareas();
 $("pedOpen").onclick=()=>{ $("pedSheet").hidden=false; document.body.style.overflow="hidden"; pedConfirm=null; renderPedidos(); $("pedTexto").focus(); };
 function cerrarPed(){ $("pedSheet").hidden=true; document.body.style.overflow=""; }
 $("pedClose").onclick=cerrarPed;
 $("pedSheet").addEventListener("click",e=>{ if(e.target===$("pedSheet")) cerrarPed(); });
+/* Borradores: lo escrito queda guardado en el celular hasta que se envía */
 $("pedTexto").value=leer("mmep_borrador_pedido");
 $("pedTexto").addEventListener("input",()=>guardar("mmep_borrador_pedido",$("pedTexto").value||null));
-$("pedForm").addEventListener("submit",async e=>{
-  e.preventDefault();
-  const texto=$("pedTexto").value.trim(); if(!texto){ pedErr("Escribí qué materiales necesitás."); return; }
-  pedErr(""); $("pedSend").disabled=true; $("pedSend").textContent="Enviando…";
+$("tPedTexto").addEventListener("input",()=>{ if(state.abierta) guardar("mmep_borrador_"+state.abierta,$("tPedTexto").value||null); });
+
+async function enviarPedido(texto,tarea,btn,label,onErr,alEnviar){
+  if(!texto){ onErr("Escribí qué materiales necesitás."); return; }
+  onErr(""); btn.disabled=true; btn.textContent="Enviando…";
   try{
-    const p=await api("/api/pedido",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({texto})});
-    state.pedidos.unshift(p); $("pedTexto").value=""; guardar("mmep_borrador_pedido",null);
-    $("pedSend").textContent="✓ Pedido enviado"; renderPedidos();
-    setTimeout(()=>{ $("pedSend").textContent="Enviar pedido"; },2000);
+    const p=await api("/api/pedido",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({texto,tarea:tarea||null})});
+    state.pedidos.unshift(p); alEnviar();
+    btn.textContent="✓ Pedido enviado"; renderPedidos();
+    setTimeout(()=>{ btn.textContent=label; },2000);
   }catch(err){
-    $("pedSend").textContent="Enviar pedido";
-    pedErr(err.status===401?"El código de la obra cambió. Salí y volvé a entrar.":"No se pudo enviar. Revisá la conexión; lo que escribiste quedó guardado.");
-  }finally{ $("pedSend").disabled=!state.online; }
+    btn.textContent=label;
+    onErr(err.status===401?"El código de la obra cambió. Salí y volvé a entrar.":"No se pudo enviar. Revisá la conexión; lo que escribiste quedó guardado.");
+  }finally{ btn.disabled=!state.online; }
+}
+$("pedForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  enviarPedido($("pedTexto").value.trim(),$("pedTarea").value,$("pedSend"),"Enviar pedido",pedErr,
+    ()=>{ $("pedTexto").value=""; guardar("mmep_borrador_pedido",null); });
 });
-async function marcarPedido(p,entregado){
+$("tPedForm").addEventListener("submit",e=>{
+  e.preventDefault(); const id=state.abierta; if(!id) return;
+  enviarPedido($("tPedTexto").value.trim(),id,$("tPedSend"),"Pedir materiales",tPedErr,
+    ()=>{ $("tPedTexto").value=""; guardar("mmep_borrador_"+id,null); });
+});
+async function marcarPedido(p,entregado,onErr){
   const prev={...p}; p.entregado=entregado; p.entregadoEn=entregado?new Date().toISOString():null; renderPedidos();
   try{ await api("/api/pedido/"+p.id,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({entregado})}); }
-  catch{ Object.assign(p,prev); renderPedidos(); pedErr("No se pudo guardar el cambio. Probá de nuevo."); }
+  catch{ Object.assign(p,prev); renderPedidos(); onErr("No se pudo guardar el cambio. Probá de nuevo."); }
 }
-async function borrarPedido(p){
+async function borrarPedido(p,onErr){
   if(pedConfirm!==p.id){ pedConfirm=p.id; renderPedidos(); return; }
   pedConfirm=null;
   try{ await api("/api/pedido/"+p.id,{method:"DELETE"}); state.pedidos=state.pedidos.filter(x=>x.id!==p.id); renderPedidos(); }
-  catch{ pedErr("No se pudo borrar. Probá de nuevo."); }
+  catch{ onErr("No se pudo borrar. Probá de nuevo."); }
 }
 
 function mostrarLogin(msg){

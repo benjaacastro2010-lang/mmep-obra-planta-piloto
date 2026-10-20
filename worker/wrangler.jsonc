@@ -3,9 +3,11 @@
   "main": "src/index.js",
   "compatibility_date": "2026-09-01",
   "workers_dev": true,
-  // La página se sirve en mmepconstructora.com/obra/ (carpeta ../obra); lo que no es un archivo va al Worker (API)
+  // La página se sirve en mmepconstructora.com/plan-de-obra/ (carpeta ../plan-de-obra); lo que no es un archivo va al Worker (API)
   "assets": { "directory": "..", "html_handling": "auto-trailing-slash", "not_found_handling": "none" },
   "routes": [
+    { "pattern": "mmepconstructora.com/plan-de-obra*", "zone_name": "mmepconstructora.com" },
+    { "pattern": "www.mmepconstructora.com/plan-de-obra*", "zone_name": "mmepconstructora.com" },
     { "pattern": "mmepconstructora.com/obra*", "zone_name": "mmepconstructora.com" },
     { "pattern": "www.mmepconstructora.com/obra*", "zone_name": "mmepconstructora.com" }
   ],

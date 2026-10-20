@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS fotos (
 CREATE INDEX IF NOT EXISTS fotos_at ON fotos (at);
 CREATE TABLE IF NOT EXISTS pedidos (
   id TEXT PRIMARY KEY,
+  tarea TEXT,
   texto TEXT NOT NULL,
   at TEXT NOT NULL,
   por TEXT,
