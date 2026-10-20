@@ -20,7 +20,7 @@
   --accent:#4fd3e6; --accent-soft:#173a40; --brand2:#6b5cf2;
   --ok:#3fd17f; --ok-bg:#15301f; --ok-line:#2e7a4c;
   --warn:#f0a54a; --warn-bg:#3a2a14; --bad:#ff8a80; --bad-bg:#3d1c19;
-  --bar:#3a3a42;
+  --bar:#3a3a42; --yellow:#ffc828;
   --f-display:"Montserrat","Arial Black",Arial,sans-serif;
   --f-body:"Poppins",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
@@ -155,7 +155,7 @@ label.add.busy{color:var(--muted);cursor:progress}
   .row .n{grid-row:span 3}
   .stagebar div{font-size:12px}
 }
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;min-height:100vh;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 img{max-width:100%}
@@ -164,18 +164,20 @@ img{max-width:100%}
 .tab{font:inherit;font-size:14px;font-weight:600;padding:11px 8px;border-radius:7px;border:0;background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-align:center}
 .tab[aria-selected="true"]{background:var(--brand2);color:#fff}
 .tab:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.tabn{font-size:11px;font-weight:700;min-width:20px;padding:2px 6px;border-radius:999px;background:var(--warn);color:#18181b}
+.tabn{font-size:11px;font-weight:700;min-width:20px;padding:2px 6px;border-radius:999px;background:var(--yellow);color:#18181b}
 .pane{display:flex;flex-direction:column;gap:18px}
 .vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
 /* Pedido de materiales */
-.pedbtn{font:inherit;color:var(--ink);display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:16px;border-radius:10px;border:1px solid var(--brand2);background:linear-gradient(120deg,rgba(107,92,242,.22),rgba(79,211,230,.08));cursor:pointer}
-.pedbtn:hover{border-color:var(--accent)}
-.pedbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pedbtn{font:inherit;color:var(--ink);display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:16px;border-radius:10px;border:1px solid var(--brand2);background:linear-gradient(120deg,rgba(107,92,242,.22),rgba(79,211,230,.08))}
+/* Puntito amarillo: la tarea tiene materiales pedidos sin entregar */
+.ydot{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--yellow);box-shadow:0 0 0 3px rgba(255,200,40,.22);flex:none;animation:latido 2s ease-in-out infinite}
+@keyframes latido{50%{box-shadow:0 0 0 6px rgba(255,200,40,.06)}}
+.need{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--yellow);white-space:nowrap}
 .pedbtn>svg{width:30px;height:30px;color:var(--accent);flex:none}
 .pedtxt{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
 .pedtxt strong{font-family:var(--f-display);font-size:19px;font-weight:800;text-transform:uppercase}
 .pedtxt span{font-size:13px;color:var(--muted)}
-.badge{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--warn-bg);color:var(--warn);white-space:nowrap}
+.badge{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 11px;border-radius:999px;background:rgba(255,200,40,.12);color:var(--yellow);white-space:nowrap}
 .pedform{display:flex;flex-direction:column;gap:10px}
 .pedform label{font-size:14px;font-weight:600}
 .pedform textarea{font:inherit;font-size:16px;line-height:1.45;padding:12px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);resize:vertical;min-height:120px}
@@ -248,11 +250,11 @@ img{max-width:100%}
     </div>
   </section>
 
-  <button class="pedbtn" id="pedOpen" type="button">
+  <div class="pedbtn" id="pedOpen" role="status">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>
-    <span class="pedtxt"><strong>Pedido de materiales</strong><span>Escribí lo que hace falta para la obra</span></span>
+    <span class="pedtxt"><strong>Pedido de materiales</strong><span id="pedResumen">Para pedir materiales, entrá a la tarea y tocá la pestaña “Pedido de materiales”.</span></span>
     <span class="badge" id="pedBadge" hidden></span>
-  </button>
+  </div>
 
   <section class="stages" aria-label="Etapas">
     <div class="axis">
@@ -431,6 +433,8 @@ async function api(path,opts={}){
 const fotoUrl=f=>`${API}/api/foto/${f.id}?k=${encodeURIComponent(state.clave)}`;
 
 const fotosDe = id => state.fotos.filter(f=>f.tarea===id);
+/* Cantidad de pedidos de materiales sin entregar de una tarea */
+const faltan = id => state.pedidos.filter(p=>p.tarea===id&&!p.entregado).length;
 /* Avance real de una tarea: sale de las fotos cargadas y de si se marcó completada.
    Foto de antes = 25 %. Fotos de después: 1 → +35, 2 → +50, 3 o más → +65. Sin marcar completada el tope es 90 %. */
 const PASOS_DESPUES=[0,35,50,65];
@@ -513,7 +517,7 @@ function render(){
     const b=document.createElement("button");
     b.className="row"+(st==="done"?" is-done":"");
     b.innerHTML=`<span class="n">${t.n}</span><span class="name"></span>
-      <span class="right"><span class="cam" ${nf?"":"hidden"}>${camIcon}<span class="mono">${nf}</span></span><span class="pill ${st}">${LABEL[st]}</span></span>
+      <span class="right">${faltan(t.id)?`<span class="need" title="Pidió materiales que todavía no se entregaron"><span class="ydot"></span>${faltan(t.id)===1?"Materiales":faltan(t.id)+" pedidos"}</span>`:""}<span class="cam" ${nf?"":"hidden"}>${camIcon}<span class="mono">${nf}</span></span><span class="pill ${st}">${LABEL[st]}</span></span>
       <span class="sub"><span class="mono">${t.ini} → ${t.fin}</span><span class="mini" title="Avance ${av} % · previsto hoy ${es} %"><i style="width:${av}%"></i>${es>0&&es<100&&st!=="done"?`<b style="left:${es}%"></b>`:""}</span><span class="mono pc">${av}%</span></span>`;
     b.querySelector(".name").textContent=t.nombre;
     b.addEventListener("click",()=>abrir(t.id));
@@ -740,8 +744,14 @@ function pedidoItem(p,conTarea,onErr){
 }
 const ordenPedidos=ps=>[...ps].sort((a,b)=>(a.entregado-b.entregado)||(b.at>a.at?1:-1));
 function renderPedidos(){
+  render();
   const pend=state.pedidos.filter(p=>!p.entregado).length;
-  const bd=$("pedBadge"); bd.hidden=!pend; bd.textContent=pend===1?"1 pendiente":`${pend} pendientes`;
+  const tareasConFalta=TAREAS.filter(t=>faltan(t.id));
+  const bd=$("pedBadge"); bd.hidden=!pend; bd.innerHTML="";
+  if(pend){ const d=document.createElement("span"); d.className="ydot"; bd.append(d," "+(pend===1?"1 pendiente":`${pend} pendientes`)); }
+  $("pedResumen").textContent = tareasConFalta.length
+    ? `Necesitan materiales: ${tareasConFalta.map(t=>"tarea "+t.n).join(", ")}. Las marcamos con un punto amarillo en la lista.`
+    : "Para pedir materiales, entrá a la tarea y tocá la pestaña “Pedido de materiales”.";
   if(state.abierta) renderPedidosTarea();
   if($("pedSheet").hidden) return;
   $("pedCount").textContent=state.pedidos.length?`${pend} pendiente${pend===1?"":"s"} de ${state.pedidos.length}`:"";
@@ -766,7 +776,6 @@ function llenarSelectTareas(){
   TAREAS.forEach(t=>{ const op=document.createElement("option"); op.value=t.id; op.textContent=`${t.n}. ${t.nombre}`; s.appendChild(op); });
 }
 llenarSelectTareas();
-$("pedOpen").onclick=()=>{ $("pedSheet").hidden=false; document.body.style.overflow="hidden"; pedConfirm=null; renderPedidos(); $("pedTexto").focus(); };
 function cerrarPed(){ $("pedSheet").hidden=true; document.body.style.overflow=""; }
 $("pedClose").onclick=cerrarPed;
 $("pedSheet").addEventListener("click",e=>{ if(e.target===$("pedSheet")) cerrarPed(); });
