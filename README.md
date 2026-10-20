@@ -8,7 +8,7 @@ Seguimiento de la obra "Remodelación integral y refuncionalización – Bloque 
 - El avance general suma todas las tareas y lo compara con lo previsto para el día.
 - **Pedido de materiales**: general o desde cada tarea; queda guardado y se marca como entregado.
 
-Para entrar hace falta un código: uno para los obreros y otro para el jefe (secretos `CLAVE` y `CLAVE_JEFE` en Cloudflare). Solo el jefe ve los avisos amarillos de materiales, marca entregas y borra fotos o pedidos.
+Para entrar hace falta un código: uno para los obreros y otro para el jefe (secretos `CLAVE` y `CLAVE_JEFE` en Cloudflare). Solo el jefe ve los avisos amarillos de materiales, marca entregas y borra pedidos. Las fotos las pueden borrar las dos cuentas.
 
 ## Cómo está armado
 

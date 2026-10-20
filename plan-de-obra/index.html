@@ -671,7 +671,7 @@ function pintarLb(){
   $("lbImg").src=fotoUrl(f);
   $("lbText").textContent=`${f.tipo==="antes"?"Antes":"Después"} · ${lbI+1} de ${lbSet.length} · ${[fmt(f.at),nombreDe(f.por)].filter(Boolean).join(" · ")}`;
   $("lbPrev").disabled=lbI===0; $("lbNext").disabled=lbI===lbSet.length-1;
-  $("lbDel").hidden=!state.online||!esJefe(); $("lbDel").textContent=lbConfirm?"¿Borrar? Tocá de nuevo":"Borrar foto";
+  $("lbDel").hidden=!state.online; $("lbDel").textContent=lbConfirm?"¿Borrar? Tocá de nuevo":"Borrar foto";
 }
 $("lbClose").onclick=()=>{ $("lb").hidden=true; };
 $("lbPrev").onclick=()=>{ if(lbI>0){lbI--;lbConfirm=false;pintarLb();} };

@@ -112,7 +112,7 @@ export default {
         });
       }
       if (m && req.method === "DELETE") {
-        if (rol !== "jefe") return soloJefe();
+        // Las fotos las puede borrar cualquiera de las dos cuentas
         await env.DB.prepare("DELETE FROM fotos WHERE id = ?1").bind(m[1]).run();
         return json({ ok: true });
       }
